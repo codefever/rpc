@@ -1,0 +1,11 @@
+syntax = "proto3";
+package rpc;
+import "google/protobuf/descriptor.proto";
+
+extend google.protobuf.ServiceOptions {
+  int32 sid = 1024;
+}
+
+extend google.protobuf.MethodOptions {
+  int32 mid = 1024;
+}

@@ -1,0 +1,16 @@
+syntax = "proto3";
+package rpc;
+
+enum RpcErrorCode {
+  OK = 0;
+  TIMEOUT = 1;
+  BUSY = 2;
+  CONNECTION_ERROR = 3;
+  UNSUPPORTED_METHODS = 4;
+
+  UNDEFINED_ERROR = 100;
+}
+
+enum RpcCompressType {
+  NONE = 0;
+}
