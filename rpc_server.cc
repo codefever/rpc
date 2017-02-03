@@ -1,4 +1,8 @@
+// Copyright 2017 <codefever@github.com>
 #include "rpc_server.h"
+
+#include <memory>
+#include <utility>
 
 #include <glog/logging.h>
 #include <google/protobuf/descriptor.pb.h>
@@ -7,7 +11,7 @@
 #include "rpc_options.pb.h"
 
 RpcServer::Builder::Builder()
-    : endpoint_(boost::asio::ip::tcp::v4(), 8080){}
+    : endpoint_(boost::asio::ip::tcp::v4(), 8080) {}
 
 RpcServer::Builder& RpcServer::Builder::AddService(
     google::protobuf::Service* service) {
@@ -101,9 +105,9 @@ void RpcServer::DoAccept() {
 }
 
 void RpcServer::DoAwaitStop() {
-   signals_.async_wait(
-     [this](boost::system::error_code /*ec*/, int /*signo*/) {
-       acceptor_.close();
-       io_service_.stop();
-     });
- }
+  signals_.async_wait(
+    [this](boost::system::error_code /*ec*/, int /*signo*/) {
+      acceptor_.close();
+      io_service_.stop();
+    });
+}

@@ -1,3 +1,4 @@
+// Copyright 2017 <codefever@github.com>
 #include "rpc_controller.h"
 
 std::string RpcController::ErrorText() const {

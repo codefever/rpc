@@ -4,7 +4,9 @@ project (rpc)
 set(CMAKE_CXX_STANDARD 11)
 
 # ---[ Using cmake scripts and modules
+list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/Modules)
+include(Cpplint)
 
 # rpc_*.proto
 find_package(Protobuf REQUIRED)
@@ -23,4 +25,5 @@ include_directories(${Boost_INCLUDE_DIRS} ${GFlags_INCLUDE_DIRS} ${Glog_INCLUDE_
 file(GLOB rpc_HDRS *.h)
 file(GLOB rpc_SRCS *.cc)
 add_library(rpc ${rpc_SRCS} ${rpc_HDRS})
+add_cpplint_check(TARGET rpc FILES ${rpc_SRCS} ${rpc_HDRS})
 target_link_libraries(rpc rpc_proto ${Boost_LIBRARIES} ${GFlags_IBRARIES} ${Glog_LIBRARIES})

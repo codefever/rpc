@@ -1,3 +1,4 @@
+// Copyright 2017 <codefever@github.com>
 #pragma once
 
 #include <boost/asio.hpp>

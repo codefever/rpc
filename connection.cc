@@ -1,3 +1,4 @@
+// Copyright 2017 <codefever@github.com>
 #include "connection.h"
 
 #include <glog/logging.h>
@@ -13,7 +14,8 @@ void Connection::DoRecv() {
   auto buffer = recv_buffer_.GetWritableBuffer();
   socket_.async_read_some(
       boost::asio::buffer(buffer.first, buffer.second),
-      [this, self](boost::system::error_code ec, std::size_t bytes_transferred) {
+      [this, self](boost::system::error_code ec,
+                   std::size_t bytes_transferred) {
         if (!ec) {
           recv_buffer_.Commit(bytes_transferred);
 

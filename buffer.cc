@@ -1,4 +1,7 @@
+// Copyright 2017 <codefever@github.com>
 #include "buffer.h"
+
+#include <algorithm>
 
 #include <glog/logging.h>
 
