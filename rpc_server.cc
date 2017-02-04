@@ -8,7 +8,30 @@
 #include <google/protobuf/descriptor.pb.h>
 
 #include "connection.h"
+#include "context.h"
 #include "rpc_options.pb.h"
+
+namespace {
+
+class StdFunctionalClosure : public google::protobuf::Closure {
+ public:
+  explicit StdFunctionalClosure(std::function<void()> f) : f_(f) {}
+  ~StdFunctionalClosure() override {}
+
+  void Run() override {
+    f_();
+    delete this;
+  }
+
+ private:
+  std::function<void()> f_;
+};
+
+google::protobuf::Closure* NewCallback(std::function<void()> f) {
+  return new StdFunctionalClosure(f);
+}
+
+}  // namespace
 
 RpcServer::Builder::Builder()
     : endpoint_(boost::asio::ip::tcp::v4(), 8080) {}
@@ -89,7 +112,13 @@ void RpcServer::Serve() {
 }
 
 void RpcServer::DoAccept() {
-  auto incoming = std::make_shared<Connection>(io_service_, &service_map_);
+  auto incoming = std::make_shared<Connection>(
+      io_service_,
+      std::bind(&RpcServer::DoDispatch,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2));
+
   acceptor_.async_accept(incoming->socket(),
     [this, incoming](boost::system::error_code ec) {
       if (!acceptor_.is_open()) {
@@ -110,4 +139,50 @@ void RpcServer::DoAwaitStop() {
       acceptor_.close();
       io_service_.stop();
     });
+}
+
+void RpcServer::DoDispatch(std::shared_ptr<RawMessage> request,
+                           std::shared_ptr<Respondor> respondor) {
+  RawMessage* response = new RawMessage();
+
+  auto it = service_map_.find(std::make_pair(request->sid(), request->mid()));
+  if (it == service_map_.end()) {
+    response->set_error_code(rpc::RpcErrorCode::UNSUPPORTED_METHODS);
+    respondor->Finish(response);
+    return;
+  }
+
+  auto& entry = it->second;
+  // direct run
+  auto ctx = std::make_shared<Context>();
+  ctx->service = entry.service;
+  ctx->method = entry.method;
+  ctx->request.reset(entry.request_prototype->New());
+  ctx->response.reset(entry.response_prototype->New());
+
+  if (!ctx->request->ParseFromString(request->payload())) {
+    response->set_error_code(rpc::RpcErrorCode::PARSE_ERROR);
+    respondor->Finish(response);
+    return;
+  }
+
+  // fill response and detach request
+  response->set_seq_no(request->seq_no());
+  request.reset();
+
+  ctx->Invoke(NewCallback([ctx, respondor, response]() {
+    if (ctx->controller.Failed()) {
+      response->set_error_code(ctx->controller.ErrorCode());
+      respondor->Finish(response);
+      return;
+    }
+
+    if (!ctx->response->SerializeToString(response->mutable_payload())) {
+      response->set_error_code(rpc::RpcErrorCode::SERIALIZE_ERROR);
+      respondor->Finish(response);
+      return;
+    }
+
+    respondor->Finish(response);
+  }));
 }

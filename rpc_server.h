@@ -1,9 +1,12 @@
 // Copyright 2017 <codefever@github.com>
 #pragma once
 
+#include <memory>
+
 #include <boost/asio.hpp>
 #include <google/protobuf/service.h>
 
+#include "pack.h"
 #include "service_map.h"
 
 class RpcServer {
@@ -32,6 +35,8 @@ class RpcServer {
   RpcServer(ServiceMap&& service_map, boost::asio::ip::tcp::endpoint endpoint);
   void DoAccept();
   void DoAwaitStop();
+  void DoDispatch(std::shared_ptr<RawMessage> request,
+                  std::shared_ptr<Respondor> respondor);
 
  private:
   const ServiceMap service_map_;

@@ -1,7 +1,20 @@
 {
     "files.associations": {
-      "unordered_map": "cpp"
+      "unordered_map": "cpp",
+      "cstddef": "cpp",
+      "cstring": "cpp",
+      "*hpp*hpp*hpp*hppcsignal": "cpp",
+      "cstdlib": "cpp",
+      "*hpp*hpp*hpp*hppctime": "cpp",
+      "*hpp*hpp*hppcctype": "cpp",
+      "cstdio": "cpp",
+      "cwchar": "cpp",
+      "*hpp*hpp*hppcmath": "cpp",
+      "cstdarg": "cpp",
+      "*hpp*hpp*hpp*hppcwctype": "cpp",
+      "functional": "cpp"
     },
 "editor.tabSize": 2,
-"files.insertFinalNewline": true
+"files.insertFinalNewline": true,
+"files.trimTrailingWhitespace": true
 }
