@@ -34,7 +34,8 @@ google::protobuf::Closure* NewCallback(std::function<void()> f) {
 }  // namespace
 
 RpcServer::Builder::Builder()
-    : endpoint_(boost::asio::ip::tcp::v4(), 8080) {}
+    : endpoint_(boost::asio::ip::tcp::v4(), 8080),
+      num_workers_(1) {}
 
 RpcServer::Builder& RpcServer::Builder::AddService(
     google::protobuf::Service* service) {
@@ -69,25 +70,35 @@ RpcServer::Builder& RpcServer::Builder::Listen(
   return *this;
 }
 
+RpcServer::Builder& RpcServer::Builder::UseWorkers(int num_workers) {
+  num_workers_ = num_workers;
+  return *this;
+}
+
 RpcServer* RpcServer::Builder::Build() {
   if (service_map_.empty()) {
     LOG(ERROR) << "no services registered, build fail.";
     return nullptr;
   }
-  return new RpcServer(std::move(service_map_), endpoint_);
+  return new RpcServer(std::move(service_map_), endpoint_, num_workers_);
 }
 
 RpcServer::RpcServer(ServiceMap&& service_map,
-                     boost::asio::ip::tcp::endpoint endpoint)
+                     boost::asio::ip::tcp::endpoint endpoint,
+                     int num_workers)
     : service_map_(std::move(service_map)),
       io_service_(),
       acceptor_(io_service_),
       signals_(io_service_),
       died_(false) {
-  signals_.add(SIGINT);
-  signals_.add(SIGTERM);
+  if (num_workers > 0) {
+    workers_.reset(new ThreadPool(num_workers));
+  }
 
   try {
+    signals_.add(SIGINT);
+    signals_.add(SIGTERM);
+
     acceptor_.open(endpoint.protocol());
     acceptor_.set_option(boost::asio::ip::tcp::acceptor::reuse_address(true));
     acceptor_.bind(endpoint);
@@ -98,7 +109,9 @@ RpcServer::RpcServer(ServiceMap&& service_map,
   }
 }
 
-RpcServer::~RpcServer() {}
+RpcServer::~RpcServer() {
+  workers_.reset();
+}
 
 void RpcServer::Serve() {
   if (Died()) {
@@ -116,10 +129,17 @@ void RpcServer::Serve() {
 void RpcServer::DoAccept() {
   auto incoming = std::make_shared<Connection>(
       io_service_,
-      std::bind(&RpcServer::DoDispatch,
-                this,
-                std::placeholders::_1,
-                std::placeholders::_2));
+      [this](std::shared_ptr<RawMessage> request,
+             std::shared_ptr<Respondor> respondor) {
+        if (!workers_) {
+          DoDispatch(request, respondor);
+        } else {
+          workers_->Schedule(std::bind(&RpcServer::DoDispatch,
+                                       this,
+                                       request,
+                                       respondor));
+        }
+      });
 
   acceptor_.async_accept(incoming->socket(),
     [this, incoming](boost::system::error_code ec) {

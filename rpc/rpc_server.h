@@ -8,6 +8,7 @@
 
 #include "rpc/pack.h"
 #include "rpc/service_map.h"
+#include "rpc/threadpool.h"
 
 class RpcServer {
  public:
@@ -22,17 +23,21 @@ class RpcServer {
     Builder();
     Builder& AddService(google::protobuf::Service* service);
     Builder& Listen(const boost::asio::ip::tcp::endpoint& endpoint);
+    Builder& UseWorkers(int num_workers);
     RpcServer* Build();
 
    private:
     ServiceMap service_map_;
     boost::asio::ip::tcp::endpoint endpoint_;
+    int num_workers_;
     Builder(const Builder&) = delete;
     void operator= (const Builder&) = delete;
   };
 
  private:
-  RpcServer(ServiceMap&& service_map, boost::asio::ip::tcp::endpoint endpoint);
+  RpcServer(ServiceMap&& service_map,
+            boost::asio::ip::tcp::endpoint endpoint,
+            int num_workers);
   void DoAccept();
   void DoAwaitStop();
   void DoDispatch(std::shared_ptr<RawMessage> request,
@@ -44,6 +49,8 @@ class RpcServer {
   boost::asio::ip::tcp::acceptor acceptor_;
   boost::asio::signal_set signals_;
   bool died_;
+
+  std::shared_ptr<ThreadPool> workers_;
 
  private:
   RpcServer(const RpcServer&) = delete;
