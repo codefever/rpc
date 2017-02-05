@@ -52,7 +52,12 @@ void Connection::DoRecv() {
             std::shared_ptr<SimpleRespondor> respondor(new SimpleRespondor);
             respondor->SetDone([this, self](RawMessage* response) {
               if (outgoing_.PushAndGetPrev(response) == nullptr) {
-                ServeResponses();
+                socket_.get_io_service().dispatch([this, self]() {
+                  if (!socket().is_open()) {
+                    return;
+                  }
+                  self->DoWrite();
+                });
               }
             });
 
@@ -119,16 +124,6 @@ void Connection::Serve() {
   // socket_.get_io_service().dispatch(std::bind(&Connection::DoRecv, this));
   VLOG(1) << "connection[" << this << "] attached.";
   DoRecv();
-}
-
-void Connection::ServeResponses() {
-  auto self(shared_from_this());
-  socket_.get_io_service().dispatch([this, self]() {
-    if (!socket().is_open()) {
-      return;
-    }
-    self->DoWrite();
-  });
 }
 
 void Connection::DoClose() {
