@@ -1,5 +1,5 @@
 // Copyright 2017 <codefever@github.com>
-#include "rpc_server.h"
+#include "rpc/rpc_server.h"
 
 #include <memory>
 #include <utility>
@@ -7,9 +7,9 @@
 #include <glog/logging.h>
 #include <google/protobuf/descriptor.pb.h>
 
-#include "connection.h"
-#include "context.h"
-#include "rpc_options.pb.h"
+#include "rpc/connection.h"
+#include "rpc/context.h"
+#include "rpc/rpc_options.pb.h"
 
 namespace {
 
@@ -98,6 +98,8 @@ RpcServer::RpcServer(ServiceMap&& service_map,
   }
 }
 
+RpcServer::~RpcServer() {}
+
 void RpcServer::Serve() {
   if (Died()) {
     LOG(ERROR) << "cannot launch a dead server";
@@ -170,19 +172,13 @@ void RpcServer::DoDispatch(std::shared_ptr<RawMessage> request,
   response->set_seq_no(request->seq_no());
   request.reset();
 
+  // invoke
   ctx->Invoke(NewCallback([ctx, respondor, response]() {
     if (ctx->controller.Failed()) {
       response->set_error_code(ctx->controller.ErrorCode());
-      respondor->Finish(response);
-      return;
-    }
-
-    if (!ctx->response->SerializeToString(response->mutable_payload())) {
+    } else if (!ctx->response->SerializeToString(response->mutable_payload())) {
       response->set_error_code(rpc::RpcErrorCode::SERIALIZE_ERROR);
-      respondor->Finish(response);
-      return;
     }
-
     respondor->Finish(response);
   }));
 }

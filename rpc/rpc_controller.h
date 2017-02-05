@@ -5,7 +5,7 @@
 
 #include <google/protobuf/service.h>
 
-#include "rpc_codes.pb.h"
+#include "rpc/rpc_codes.pb.h"
 
 using rpc::RpcErrorCode;
 

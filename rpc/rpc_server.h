@@ -6,8 +6,8 @@
 #include <boost/asio.hpp>
 #include <google/protobuf/service.h>
 
-#include "pack.h"
-#include "service_map.h"
+#include "rpc/pack.h"
+#include "rpc/service_map.h"
 
 class RpcServer {
  public:

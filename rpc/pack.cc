@@ -1,5 +1,5 @@
 // Copyright 2017 <codefever@github.com>
-#include "pack.h"
+#include "rpc/pack.h"
 
 #include <stdint.h>
 
@@ -38,11 +38,13 @@ void SimpleMessageDecoder::Next(char** data, size_t* size,
       *data = reinterpret_cast<char*>(header_) + bytes_read_;
       *size = sizeof(*header_) - bytes_read_;
     }
+    break;
   case State::RECV_PAYLOAD: {
       CHECK_LT(bytes_read_, header_->len);
       *data = const_cast<char*>(curr_->mutable_payload()->data()) + bytes_read_;
       *size = curr_->mutable_payload()->size() - bytes_read_;
     }
+    break;
   }
   *callback = std::bind(&SimpleMessageDecoder::TryDecode, this,
                         std::placeholders::_1);
@@ -62,6 +64,11 @@ bool SimpleMessageDecoder::TryDecode(size_t size) {
   case State::RECV_HEAD: {
       if (bytes_read_ + size >= sizeof(*header_)) {
         CHECK_EQ(bytes_read_ + size, sizeof(*header_));
+        VLOG(3) << "decode head, len=[" << header_->len
+                << "], seq_no=[" << header_->seq_no
+                << "], sid=[" << header_->sid
+                << "], mid=[" << header_->mid
+                << "], code=[" << header_->code << "]";
 
         curr_ = new RawMessage;
         curr_->set_sid(static_cast<int>(header_->sid));
@@ -73,10 +80,14 @@ bool SimpleMessageDecoder::TryDecode(size_t size) {
         bytes_read_ = 0;
 
         state_ = State::RECV_PAYLOAD;
+
+        // go ahead...
+        return TryDecode(0);
       } else {
         bytes_read_ += size;
       }
     }
+    break;
   case State::RECV_PAYLOAD: {
       if (bytes_read_ + size >= header_->len) {
         CHECK_EQ(bytes_read_ + size, header_->len);
@@ -88,6 +99,7 @@ bool SimpleMessageDecoder::TryDecode(size_t size) {
         bytes_read_ += size;
       }
     }
+    break;
   }
   return true;
 }
@@ -111,13 +123,19 @@ class SimpleEncodedData : public RawMessageEncoder::EncodedData {
     case State::SEND_HEAD: {
         *data = reinterpret_cast<char*>(&header_);
         *size = sizeof(header_);
-        state_ = State::SEND_PAYLOAD;
+        if (msg_->payload().size() > 0) {
+          state_ = State::SEND_PAYLOAD;
+        } else {
+          state_ = State::FINISH;
+        }
       }
+      break;
     case State::SEND_PAYLOAD: {
         *data = const_cast<char*>(msg_->payload().data());
         *size = msg_->payload().size();
         state_ = State::FINISH;
       }
+      break;
     case State::FINISH:
     case State::ERROR: {
         return false;
@@ -143,7 +161,7 @@ class SimpleEncodedData : public RawMessageEncoder::EncodedData {
   State state_;
 };
 
-RawMessageEncoder::EncodedData* RawMessageEncoder::Encode(
+RawMessageEncoder::EncodedData* SimpleMessageEncoder::Encode(
     const RawMessage* msg) {
   return new SimpleEncodedData(msg);
 }

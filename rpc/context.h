@@ -5,7 +5,7 @@
 
 #include <google/protobuf/service.h>
 
-#include "rpc_controller.h"
+#include "rpc/rpc_controller.h"
 
 struct Context {
   RpcController controller;

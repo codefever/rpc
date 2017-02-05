@@ -1,10 +1,11 @@
 // Copyright 2017 <codefever@github.com>
 #pragma once
 
+#include <functional>
 #include <deque>
 #include <string>
 
-#include "rpc_codes.pb.h"
+#include "rpc/rpc_codes.pb.h"
 
 class RawMessage {
  public:

@@ -1,0 +1,19 @@
+// Copyright 2017 <codefever@github.com>
+syntax = "proto3";
+import "rpc/rpc_options.proto";
+option cc_generic_services = true;
+
+service EchoService {
+  option(rpc.sid) = 100;
+  rpc Echo(EchoRequest) returns (EchoResponse) {
+    option(rpc.mid) = 1024;
+  }
+}
+
+message EchoRequest {
+  string ping = 1;
+}
+
+message EchoResponse {
+  string pong = 1;
+}

@@ -1,7 +1,7 @@
 find_package(PythonInterp)
 
 set(STYLE_FILTER)
-set(STYLE_FILTER "${STYLE_FILTER}-build/include_subdir,")
+#set(STYLE_FILTER "${STYLE_FILTER}-build/include_subdir,")
 set(STYLE_FILTER "${STYLE_FILTER}-build/include_order,")
 set(STYLE_FILTER "${STYLE_FILTER}-build/c++11,")
 

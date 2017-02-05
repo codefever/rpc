@@ -1,5 +1,5 @@
 // Copyright 2017 <codefever@github.com>
-#include "connection.h"
+#include "rpc/connection.h"
 
 #include <glog/logging.h>
 
@@ -31,6 +31,7 @@ Connection::~Connection() {
     delete feedback_.front();
     feedback_.pop_front();
   }
+  VLOG(1) << "connection[" << this << "] destroyed.";
 }
 
 void Connection::DoRecv() {
@@ -116,6 +117,7 @@ void Connection::DoWrite() {
 
 void Connection::Serve() {
   // socket_.get_io_service().dispatch(std::bind(&Connection::DoRecv, this));
+  VLOG(1) << "connection[" << this << "] attached.";
   DoRecv();
 }
 

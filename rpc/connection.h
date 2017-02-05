@@ -9,9 +9,9 @@
 
 #include <boost/asio.hpp>
 
-#include "dispatcher.h"
-#include "pack.h"
-#include "service_map.h"
+#include "rpc/dispatcher.h"
+#include "rpc/pack.h"
+#include "rpc/service_map.h"
 
 class Connection : public std::enable_shared_from_this<Connection> {
  public:
