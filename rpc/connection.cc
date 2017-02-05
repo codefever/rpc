@@ -26,11 +26,6 @@ Connection::Connection(boost::asio::io_service& io_service,
       encoder_(new SimpleMessageEncoder) {}
 
 Connection::~Connection() {
-  std::unique_lock<std::mutex> lock(mutex_);
-  while (!feedback_.empty()) {
-    delete feedback_.front();
-    feedback_.pop_front();
-  }
   VLOG(1) << "connection[" << this << "] destroyed.";
 }
 
@@ -56,7 +51,9 @@ void Connection::DoRecv() {
             std::shared_ptr<RawMessage> request(req);
             std::shared_ptr<SimpleRespondor> respondor(new SimpleRespondor);
             respondor->SetDone([this, self](RawMessage* response) {
-              AddFeedback(response);
+              if (outgoing_.PushAndGetPrev(response) == nullptr) {
+                ServeResponses();
+              }
             });
 
             // schedule
@@ -96,8 +93,11 @@ void Connection::WriteEncodedData(
       LOG(WARNING) << "encode fail!";
       DoClose();
     } else {
-      if (PopAndCheckIfAnyFeedback()) {
-        DoWrite();
+      RawMessage* next = outgoing_.PopAndGetNext();
+      if (next) {
+        std::shared_ptr<RawMessageEncoder::EncodedData> next_data(
+            encoder_->Encode(next));
+        WriteEncodedData(next_data);
       }
     }
   }
@@ -105,7 +105,7 @@ void Connection::WriteEncodedData(
 
 void Connection::DoWrite() {
   auto self(shared_from_this());
-  RawMessage* response = PeakFeedback();
+  RawMessage* response = outgoing_.GetNext();
   if (!response) {
     return;
   }
@@ -134,29 +134,4 @@ void Connection::ServeResponses() {
 void Connection::DoClose() {
   boost::system::error_code ignored;
   socket_.close(ignored);
-}
-
-void Connection::AddFeedback(RawMessage* msg) {
-  bool should_trigger = false;
-  {
-    std::unique_lock<std::mutex> lock(mutex_);
-    should_trigger = feedback_.empty();
-    feedback_.push_back(msg);
-  }
-
-  if (should_trigger) {
-    ServeResponses();
-  }
-}
-
-RawMessage* Connection::PeakFeedback() {
-  std::unique_lock<std::mutex> lock(mutex_);
-  return feedback_.empty() ? nullptr : feedback_.front();
-}
-
-bool Connection::PopAndCheckIfAnyFeedback() {
-  std::unique_lock<std::mutex> lock(mutex_);
-  delete feedback_.front();
-  feedback_.pop_front();
-  return !feedback_.empty();
 }

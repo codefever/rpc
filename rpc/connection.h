@@ -4,12 +4,12 @@
 #include <atomic>
 #include <deque>
 #include <memory>
-#include <mutex>
 #include <utility>
 
 #include <boost/asio.hpp>
 
 #include "rpc/dispatcher.h"
+#include "rpc/outgoing_queue.h"
 #include "rpc/pack.h"
 #include "rpc/service_map.h"
 
@@ -31,10 +31,6 @@ class Connection : public std::enable_shared_from_this<Connection> {
   void DoWrite();
   void DoClose();
 
-  void AddFeedback(RawMessage* msg);
-  RawMessage* PeakFeedback();
-  bool PopAndCheckIfAnyFeedback();
-
   void WriteEncodedData(
       std::shared_ptr<RawMessageEncoder::EncodedData> encoded_data);
 
@@ -46,11 +42,8 @@ class Connection : public std::enable_shared_from_this<Connection> {
   std::shared_ptr<RawMessageDecoder> decoder_;
   std::shared_ptr<RawMessageEncoder> encoder_;
 
-  std::atomic<int> pending_requests_;
-
-  // lock-free?
-  std::mutex mutex_;
-  std::deque<RawMessage*> feedback_;
+  // std::atomic<int> pending_requests_;
+  OutgoingQueue<RawMessage> outgoing_;
 
  private:
   Connection(const Connection&) = delete;
